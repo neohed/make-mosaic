@@ -16,9 +16,30 @@ namespace MakeMosaic
 
         static void Main(string[] args)
         {
-            var images = GetImages();
+            GetBBColours();
+        }
 
-            foreach(string image in images.Where(i => !i.EndsWith(pixelatedImageAppend)))
+        static void GetBBColours()
+        {
+            var img = Image.FromFile(Path.Combine(imageFolder, "output-onlineimagetools.png"));
+            var id = GetColours(img, 60);
+            HashSet<string> colours = new HashSet<string>();
+            foreach (var color in id.Colours)
+            {
+                if (!colours.Contains(color))
+                {
+                    colours.Add(color);
+                }
+            }
+            string output = JsonConvert.SerializeObject(colours);
+            File.WriteAllText("BreakingBad_smoke_2.json", output);
+        }
+
+        static void GeneratePixelatedDataForImages(string ext)
+        {
+            var images = GetImages(ext);
+
+            foreach (string image in images.Where(i => !i.EndsWith(pixelatedImageAppend)))
             {
                 string fn = Path.GetFileNameWithoutExtension(image);
 
@@ -27,23 +48,23 @@ namespace MakeMosaic
                 img.Dispose();
             }
 
-            images = GetImages();
+            images = GetImages(ext);
 
             foreach (string image in images.Where(i => i.EndsWith(pixelatedImageAppend)))
             {
                 string fn = Path.GetFileNameWithoutExtension(image);
 
                 var img = Image.FromFile(image);
-                var id = GetColours(img);
+                var id = GetColours(img, pixelateSize);
                 id.Name = fn;
                 string output = JsonConvert.SerializeObject(id);
                 File.WriteAllText(imageFolder + fn + ".json", output);
             }
         }
 
-        static string[] GetImages()
+        static string[] GetImages(string ext)
         {
-            string[] fileEntries = Directory.GetFiles(imageFolder, "*.jpg");
+            string[] fileEntries = Directory.GetFiles(imageFolder, "*." + ext);
             return fileEntries;
         }
 
@@ -65,7 +86,7 @@ namespace MakeMosaic
             }
         }
 
-        static ImageData GetColours(Image img)
+        static ImageData GetColours(Image img, int pixSize)
         {
             using (Bitmap bmp = new Bitmap(img))
             {
@@ -73,9 +94,9 @@ namespace MakeMosaic
                 int height = bmp.Height;
                 List<string> colours = new List<string>();
 
-                for (int y = pixelateSize / 2; y < height; y += pixelateSize)
+                for (int y = pixSize / 2; y < height; y += pixSize)
                 {
-                    for (int x = pixelateSize / 2; x < width; x += pixelateSize)
+                    for (int x = pixSize / 2; x < width; x += pixSize)
                     {
                         Color clr = bmp.GetPixel(x, y);
                         int red = clr.R;
@@ -93,7 +114,7 @@ namespace MakeMosaic
 
                 ImageData id = new ImageData();
                 id.Colours = colours.ToArray();
-                id.Width = (int)Math.Ceiling((decimal)width / pixelateSize);
+                id.Width = (int)Math.Ceiling((decimal)width / pixSize);
 
                 return id;
             }
